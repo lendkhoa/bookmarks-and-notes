@@ -1,0 +1,18 @@
+<svg width="128" height="128"
+	xmlns="http://www.w3.org/2000/svg">
+	<!-- Background -->
+	<rect x="14" y="8" width="100" height="112" rx="8" fill="#2D2D30"/>
+
+	<!-- Text lines effect -->
+	<rect x="32" y="24" width="64" height="4" rx="2" fill="#848484"/>
+	<rect x="32" y="40" width="48" height="4" rx="2" fill="#848484"/>
+	<rect x="32" y="56" width="56" height="4" rx="2" fill="#848484"/>
+	<rect x="32" y="72" width="40" height="4" rx="2" fill="#848484"/>
+
+	<!-- Bookmark symbol -->
+	<path d="M78 28 L78 84 L64 72 L50 84 L50 28 Z" fill="#157efb" stroke="#ffffff" stroke-width="2"/>
+
+	<!-- Exclamation mark -->
+	<circle cx="64" cy="45" r="3" fill="#ffffff"/>
+	<rect x="62" y="52" width="4" height="15" rx="2" fill="#ffffff"/>
+</svg>

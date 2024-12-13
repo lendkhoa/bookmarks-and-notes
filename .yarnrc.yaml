@@ -1,0 +1,10 @@
+supportedArchitectures:
+  - arm64
+  - x64
+  - ia32
+os:
+  - darwin
+  - win32
+  - linux
+
+nodeLinker: node-modules
