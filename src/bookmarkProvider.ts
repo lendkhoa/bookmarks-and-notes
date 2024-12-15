@@ -112,7 +112,9 @@ export class BookmarkProvider implements vscode.TreeDataProvider<TreeNode> {
     // Sort bookmarks by file path and then by line number
     const sortedBookmarks = [...bookmarks].sort((a, b) => {
       const fileCompare = a.filePath.localeCompare(b.filePath);
-      if (fileCompare !== 0) return fileCompare;
+      if (fileCompare !== 0) {
+        return fileCompare;
+      }
       return a.line - b.line;
     });
 

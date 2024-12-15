@@ -72,7 +72,6 @@ export function activate(context: vscode.ExtensionContext) {
 
   vscode.window.registerTreeDataProvider("bookmarksView", bookmarkProvider);
 
-  // Add bookmark command
   let addBookmarkCommand = vscode.commands.registerCommand(
     "code-bookmarker.addBookmark",
     async () => {
@@ -85,24 +84,71 @@ export function activate(context: vscode.ExtensionContext) {
       const line = editor.selection.active.line;
       const lineText = editor.document.lineAt(line).text.trim();
 
-      const note = await vscode.window.showInputBox({
-        prompt: "Enter a note for this bookmark",
-        placeHolder: "Note (optional)",
+      // Create quick pick for a native popup experience
+      const quickPick = vscode.window.createQuickPick();
+      quickPick.title = "Add Bookmark Note";
+      quickPick.placeholder = "Type your note (Ctrl+Enter for new line)";
+      quickPick.buttons = [
+        {
+          iconPath: new vscode.ThemeIcon("save"),
+          tooltip: "Save Note",
+        },
+      ];
+
+      let noteContent = "";
+
+      return new Promise<void>((resolve) => {
+        // Handle input changes
+        quickPick.onDidChangeValue((value) => {
+          noteContent = value;
+        });
+
+        quickPick.onDidTriggerButton(async () => {
+          if (noteContent.trim()) {
+            const bookmark: Bookmark = {
+              id: Date.now().toString(),
+              filePath: editor.document.uri.fsPath,
+              line: line,
+              lineText: lineText,
+              note: noteContent.trim(),
+              created: new Date().toISOString(),
+            };
+
+            bookmarks.push(bookmark);
+            await context.globalState.update("bookmarks", bookmarks);
+            bookmarkProvider.refresh();
+            updateDecorations(editor);
+          }
+          quickPick.hide();
+        });
+
+        // Handle Enter key (save) and Escape (cancel)
+        quickPick.onDidAccept(async () => {
+          if (noteContent.trim()) {
+            const bookmark: Bookmark = {
+              id: Date.now().toString(),
+              filePath: editor.document.uri.fsPath,
+              line: line,
+              lineText: lineText,
+              note: noteContent.trim(),
+              created: new Date().toISOString(),
+            };
+
+            bookmarks.push(bookmark);
+            await context.globalState.update("bookmarks", bookmarks);
+            bookmarkProvider.refresh();
+            updateDecorations(editor);
+          }
+          quickPick.hide();
+        });
+
+        // Clean up on hide
+        quickPick.onDidHide(() => {
+          resolve();
+        });
+
+        quickPick.show();
       });
-
-      const bookmark: Bookmark = {
-        id: Date.now().toString(),
-        filePath: editor.document.uri.fsPath,
-        line: line,
-        lineText: lineText,
-        note: note || "",
-        created: new Date().toISOString(),
-      };
-
-      bookmarks.push(bookmark);
-      await context.globalState.update("bookmarks", bookmarks);
-      bookmarkProvider.refresh();
-      updateDecorations(editor);
     }
   );
 
