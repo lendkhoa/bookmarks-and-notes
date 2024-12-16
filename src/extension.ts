@@ -1,8 +1,16 @@
+import * as fs from "fs";
 import * as vscode from "vscode";
-import { Bookmark } from "./types";
+import { Bookmark, BookmarkNode } from "./types";
 import { BookmarkProvider } from "./bookmarkProvider";
 import path from "path";
 import { BookmarkStorage } from "./storage";
+import { getNonce } from "./utils";
+import { Edge } from "reactflow";
+
+interface CanvasLayout {
+  nodes: BookmarkNode[];
+  edges: Edge[];
+}
 
 export function activate(context: vscode.ExtensionContext) {
   let storage: BookmarkStorage;
@@ -289,6 +297,110 @@ export function activate(context: vscode.ExtensionContext) {
     }
   );
 
+  let openCanvasCommand = vscode.commands.registerCommand(
+    "code-bookmarker.canvas",
+    () => {
+      const panel = vscode.window.createWebviewPanel(
+        "bookmarkCanvas",
+        "Bookmark Canvas",
+        vscode.ViewColumn.One,
+        {
+          enableScripts: true,
+          localResourceRoots: [
+            vscode.Uri.joinPath(context.extensionUri, "dist"),
+          ],
+        }
+      );
+
+      // Group bookmarks by file
+      const bookmarksByFile = bookmarks.reduce((acc, bookmark) => {
+        if (!acc[bookmark.filePath]) {
+          acc[bookmark.filePath] = [];
+        }
+        acc[bookmark.filePath].push(bookmark);
+        return acc;
+      }, {} as Record<string, Bookmark[]>);
+
+      // Create initial nodes
+      const nodes: BookmarkNode[] = Object.entries(bookmarksByFile).map(
+        ([filePath, fileBookmarks], index) => ({
+          id: `file-${index}`,
+          type: "bookmarkNode",
+          position: {
+            x: 100 + (index % 3) * 300, // Create a grid layout
+            y: 100 + Math.floor(index / 3) * 200,
+          },
+          draggable: true,
+          data: {
+            filePath,
+            bookmarks: fileBookmarks,
+          },
+        })
+      );
+
+      const scriptUri = panel.webview.asWebviewUri(
+        vscode.Uri.joinPath(context.extensionUri, "dist", "canvas.js")
+      );
+
+      // Get reactflow styles
+      const styleUri = panel.webview.asWebviewUri(
+        vscode.Uri.joinPath(context.extensionUri, "dist", "style.css")
+      );
+
+      const nonce = getNonce();
+
+      panel.webview.html = getWebviewContent(panel, scriptUri);
+
+      // Initialize last saved layout
+      const savedLayout = context.globalState.get("canvasLayout") as
+        | CanvasLayout
+        | undefined;
+
+      if (savedLayout) {
+        panel.webview.postMessage({
+          command: "bookmarksData",
+          nodes: savedLayout.nodes,
+          edges: savedLayout.edges,
+        });
+      }
+
+      panel.webview.onDidReceiveMessage(
+        async (message) => {
+          switch (message.command) {
+            case "getBookmarks":
+              panel.webview.postMessage({
+                command: "bookmarksData",
+                nodes,
+                edges: [],
+              });
+              break;
+            case "updateBookmark":
+              const { bookmarkId, newNote } = message;
+              const bookmark = bookmarks.find((b) => b.id === bookmarkId);
+              if (bookmark) {
+                bookmark.note = newNote;
+                await context.globalState.update("bookmarks", bookmarks);
+                bookmarkProvider.refresh();
+              }
+              break;
+            case "openFile":
+              const openPath = vscode.Uri.file(message.filePath);
+              vscode.window.showTextDocument(openPath);
+              return;
+            case "saveLayout":
+              await context.globalState.update("canvasLayout", {
+                nodes: message.nodes,
+                edges: message.edges,
+              });
+              break;
+          }
+        },
+        undefined,
+        context.subscriptions
+      );
+    }
+  );
+
   context.subscriptions.push(
     addBookmarkCommand,
     editNoteCommand,
@@ -297,8 +409,48 @@ export function activate(context: vscode.ExtensionContext) {
     bookmarkDecorationType,
     exportCommand,
     importCommand,
-    recoverCommand
+    recoverCommand,
+    openCanvasCommand
   );
+}
+
+export function getWebviewContent(
+  panel: vscode.WebviewPanel,
+  scriptUri: vscode.Uri
+): string {
+  const nonce = getNonce();
+
+  // Get the path to the extension's root directory (one level up from dist)
+  const extensionPath = path.join(__dirname, "..");
+  // Construct path to the HTML file in src/webview
+  const templatePath = path.join(
+    extensionPath,
+    "src",
+    "webview",
+    "webview.html"
+  );
+
+  let htmlContent: string;
+
+  try {
+    htmlContent = fs.readFileSync(templatePath, "utf-8");
+  } catch (error: unknown) {
+    if (error instanceof Error) {
+      console.error(`Failed to read template file: ${templatePath}`, error);
+      throw new Error(`Could not load webview HTML template: ${error.message}`);
+    } else {
+      // Handle case where error is not an Error object
+      console.error(`Failed to read template file: ${templatePath}`, error);
+      throw new Error("Could not load webview HTML template: Unknown error");
+    }
+  }
+
+  htmlContent = htmlContent
+    .replace(/{{cspSource}}/g, panel.webview.cspSource)
+    .replace(/{{nonce}}/g, nonce)
+    .replace(/{{scriptUri}}/g, scriptUri.toString());
+
+  return htmlContent;
 }
 
 export function deactivate() {

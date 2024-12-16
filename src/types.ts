@@ -6,3 +6,20 @@ export interface Bookmark {
   note: string;
   created: string;
 }
+
+export interface BookmarkNode {
+  id: string;
+  type: "bookmarkNode";
+  position: { x: number; y: number };
+  data: {
+    filePath: string;
+    bookmarks: Bookmark[];
+  };
+}
+
+export interface BookmarkConnection {
+  id: string;
+  source: string;
+  target: string;
+  label?: string;
+}
