@@ -1,5 +1,7 @@
 // esbuild.js
 const esbuild = require('esbuild-wasm');
+const fs = require('fs');
+const path = require('path');
 
 async function build() {
   try {
@@ -39,6 +41,16 @@ async function build() {
         'process.env.NODE_ENV': '"production"'
       }
     });
+
+    const webviewDistDir = path.join(__dirname, 'dist', 'webview');
+    if (!fs.existsSync(webviewDistDir)) {
+      fs.mkdirSync(webviewDistDir, { recursive: true });
+    }
+
+    fs.copyFileSync(
+      path.join(__dirname, 'src', 'webview', 'webview.html'),
+      path.join(webviewDistDir, 'webview.html')
+    );
 
     console.log('Build complete');
   } catch (error) {

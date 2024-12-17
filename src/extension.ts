@@ -349,7 +349,7 @@ export function activate(context: vscode.ExtensionContext) {
 
       const nonce = getNonce();
 
-      panel.webview.html = getWebviewContent(panel, scriptUri);
+      panel.webview.html = getWebviewContent(panel, scriptUri, context);
 
       // Initialize last saved layout
       const savedLayout = context.globalState.get("canvasLayout") as
@@ -416,7 +416,8 @@ export function activate(context: vscode.ExtensionContext) {
 
 export function getWebviewContent(
   panel: vscode.WebviewPanel,
-  scriptUri: vscode.Uri
+  scriptUri: vscode.Uri,
+  context: vscode.ExtensionContext
 ): string {
   const nonce = getNonce();
 
@@ -430,17 +431,23 @@ export function getWebviewContent(
     "webview.html"
   );
 
+  const webviewPath = path.join(
+    context.extensionPath,
+    "dist",
+    "webview",
+    "webview.html"
+  );
   let htmlContent: string;
 
   try {
-    htmlContent = fs.readFileSync(templatePath, "utf-8");
+    htmlContent = fs.readFileSync(webviewPath, "utf-8");
   } catch (error: unknown) {
     if (error instanceof Error) {
-      console.error(`Failed to read template file: ${templatePath}`, error);
+      console.error(`Failed to read template file: ${webviewPath}`, error);
       throw new Error(`Could not load webview HTML template: ${error.message}`);
     } else {
       // Handle case where error is not an Error object
-      console.error(`Failed to read template file: ${templatePath}`, error);
+      console.error(`Failed to read template file: ${webviewPath}`, error);
       throw new Error("Could not load webview HTML template: Unknown error");
     }
   }
