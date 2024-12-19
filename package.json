@@ -2,7 +2,7 @@
   "name": "bookmarks-and-notes",
   "displayName": "bookmarks-and-notes",
   "description": "Bookmark line of code and add note",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "icon": "images/icon.png",
   "publisher": "BoseSam",
   "engines": {
